@@ -40,20 +40,30 @@ local L = core.L
 local totemList = {--Nameplates with these names are totems. By default we ignore totem nameplates.
     2484,--Earthbind Totem
     8143,--Tremor Totem
-    8177,--Grounding Totem 
+    8177,--Grounding Totem
+    8512,--Windfury Totem
+    6495,--Sentry Totem
+    8170,--Cleansing Totem
+    3738,--Wrath of Air Totem
     2062,--Earth Elemental Totem
     2894,--Fire Elemental Totem
-    8190,--Magma Totem
-    5394,--Healing Stream Totem
-    3599,--Searing Totem
-	108269, --Capacitor Totem - new
-	120668, --Stormlash Totem - new
+    58734,--Magma Totem
+    58582,--Stoneclaw Totem
+    58753,--Stoneskin Totem
+    58739,--Fire Resistance Totem
+    58656,--Flametongue Totem
+    58745,--Frost Resistance Totem
+    58757,--Healing Stream Totem
+    58774,--Mana Spring Totem
+    58749,--Nature Resistance Totem
+    58704,--Searing Totem
+    58643,--Strength of Earth Totem
+    57722,--Totem of Wrath
 }
 
 
 local defaultSpells1 = {--Important spells, add them with huge icons.
-
-	118, --Polymorph
+118, --Polymorph
 	51514, --Hex
 	710, --Banish
 	6358, --Seduction
@@ -75,45 +85,9 @@ local defaultSpells1 = {--Important spells, add them with huge icons.
 	29166, --Innervate (druid) 
 	47585, --Dispersion (priest)
 	19386, --Wyvern Sting (hunter)
-	
-	87204, -- Shadow Priest 4pPVP
-	
-	110913, --Warlock temnaia sdelka
-	111397, --Warlock Krovavi ygas
-	108416, --Warlock Gertvenniy dogovor
-	104773, --Warlock Tverdia reshimost
-		
-	871, --Warrior Shield Wall
-	
-	19263, --Hunter Deterance
-	
-	61336, --Druid
-	
-	31230, --Rogue
-	
-	6940, --Paladin
-	31821, --Paladin
-	
-	48707, --DK
-	
-	108271, --Shaman
-	30823, --Shaman
-	
-	53480, --Hunter
-	
-	108945, --Priest
-	6346, --Priest
-	15286, --Priest
-	
-	122783, --Monk
-	122278, --Monk
-	122465, --Monk
 }
 
 local defaultSpells2 = {--semi-important spells, add them with mid size icons.
-	118038, -- warrior 
-	45243, -- priest
-	116849, -- monk poolp
 	15487, --Silence (priest)
 	10060, --Power Infusion (priest) 
 	2825, --Bloodlust
@@ -136,8 +110,7 @@ local defaultSpells2 = {--semi-important spells, add them with mid size icons.
 	64044, --Psychic Horror
 	19503, --Scatter Shot (hunter)
 	34490, --Silencing Shot (hunter)
-	-- 10278, --Hand of Protection (pally) - Changed
-    1022, --Hand of Protection (pally)
+	10278, --Hand of Protection (pally)
 	10326, --Turn Evil (pally)
 	44572, --Deep Freeze (mage)
 	20066, --Repentance (pally)
@@ -153,44 +126,9 @@ local defaultSpells2 = {--semi-important spells, add them with mid size icons.
 	53905, --Indestructible Potion
 	54221, --Potion of Speed
 	1850, --Dash
-	87204, --
-	114404, -- 
-	
-	113860, --Warlock Черная душа: Страдание
-	113861, --Warlock Черная душа: Знание	
-	113858, --Warlock Черная душа: Изменчивость
-	
-	114207, --Warrior Skull
-	23920, --Warrior Reflect
-	1719, --Warrior Recklessness
-	18499, --Warrior Berserk
-	71, --Warrior  Defence Stance
-	107574, --Warrior Avatar
-	12292, --Warrior Bleed
-	114028, --Warriot Mass Reflect
-	
-	108288, --Druid HOTW
-	124974, --Druid 
-	106731, --Druid
-	102342, --Druid
-	112071, --Druid Parad?
-	
-	1966, -- Rogue faint
-	
-	48263, --DK blood presens	
-	77535, --DK Shield blood
-	
-	16166, --Shaman
-	
-	3045, --Hunter
-	19574, --Hunter
-	
---	10060, --Priest
 }
 
 local defaultSpells3 = { -- used to add spell only by name ( no need spellid )
-	121164, -- Sfera mogushestva
-	5782, 	-- Fear
 }
 
 
@@ -397,6 +335,10 @@ do
 	
 	local LibStub = LibStub
 	function core:OnInitialize()
+		if (not InterfaceOptionsCombatPanelNameplateClassColors:GetChecked()) then
+			InterfaceOptionsCombatPanelNameplateClassColors:Click() -- if class colors is not set than libnameplate fails to detect players 
+		end
+	
 		self.db = LibStub("AceDB-3.0"):New("PB_DB", core.defaultSettings, true)
 		self.db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
 		self.db.RegisterCallback(self, "OnProfileCopied", "OnProfileChanged")
@@ -791,6 +733,7 @@ do
 		end
 		
 		plateType = GetPlateType(plate)
+		
 		if (P.abovePlayers == true and plateType == "PLAYER") or (P.aboveNPC == true and plateType == "NPC") then
 			if plateType == "PLAYER" and P.playerCombatWithOnly == true and (not IsPlateInCombat(plate)) then --  and LibNameplate:GetThreatSituation(plate) == "LOW"
 	--~ 			Debug("ShouldAddBuffs A", "We're not in combat with",plateName)
