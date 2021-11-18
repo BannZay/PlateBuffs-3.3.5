@@ -1,0 +1,31 @@
+## Interface: 50400
+## X-Compatible-With: 50400
+## Title: Plate Buffs - MoP
+## Version: 1.17.2
+## Notes: Show buffs on nameplates. FanUpd by Alea
+## Author: Cyprias
+## SavedVariables: PB_DB
+## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibNameplate-1.0, LibNameplateRegistry-1.0
+## X-Curse-Packaged-Version: r228
+## X-Curse-Project-Name: PlateBuffs
+## X-Curse-Project-ID: platebuffs
+## X-Curse-Repository-ID: wow/platebuffs/mainline
+
+## X-Website: http://www.wowinterface.com/downloads/info21377-PlateBuff-Mop.html
+## X-Donate: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=D6SUMPTFUATY6
+## X-License: All Rights Reserved
+
+## LoadManagers: AddonLoader
+## X-LoadOn-Always: true
+
+#@no-lib-strip@
+libs\embeds.xml
+#@end-no-lib-strip@
+
+locales\locales.xml
+
+func.lua
+core.lua
+frames.lua
+options.lua
+combatlog.lua

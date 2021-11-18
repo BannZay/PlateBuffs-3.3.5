@@ -1,0 +1,62 @@
+------------------------------------------------------------------------
+r228 | ajiea | 2014-06-23 22:20:29 +0000 (Mon, 23 Jun 2014) | 1 line
+Changed paths:
+   M /trunk/.pkgmeta
+
+add LibSharedMedia-Widgets
+------------------------------------------------------------------------
+r227 | ajiea | 2014-06-23 22:13:25 +0000 (Mon, 23 Jun 2014) | 1 line
+Changed paths:
+   M /trunk/.pkgmeta
+
+add LibSharedMedia-3.0
+------------------------------------------------------------------------
+r226 | ajiea | 2014-06-23 21:11:31 +0000 (Mon, 23 Jun 2014) | 1 line
+Changed paths:
+   M /trunk/.pkgmeta
+   M /trunk/PlateBuffs.toc
+   M /trunk/combatlog.lua
+   M /trunk/core.lua
+   M /trunk/frames.lua
+   M /trunk/func.lua
+   A /trunk/libs/LibAuraInfo-1.0
+   A /trunk/libs/LibAuraInfo-1.0/LibAuraInfo-1.0.lua
+   A /trunk/libs/LibAuraInfo-1.0/lib.xml
+   A /trunk/libs/LibAuraInfo-1.0/spellIdData.lua
+   A /trunk/libs/LibNameplate-1.0
+   A /trunk/libs/LibNameplate-1.0/CallbackHandler-1.0
+   A /trunk/libs/LibNameplate-1.0/CallbackHandler-1.0/CallbackHandler-1.0.lua
+   A /trunk/libs/LibNameplate-1.0/CallbackHandler-1.0/CallbackHandler-1.0.xml
+   A /trunk/libs/LibNameplate-1.0/LibNameplate-1.0.lua
+   A /trunk/libs/LibNameplate-1.0/LibStub
+   A /trunk/libs/LibNameplate-1.0/LibStub/LibStub.lua
+   A /trunk/libs/LibNameplate-1.0/LibStub/LibStub.toc
+   A /trunk/libs/LibNameplate-1.0/LibStub/tests
+   A /trunk/libs/LibNameplate-1.0/LibStub/tests/test.lua
+   A /trunk/libs/LibNameplate-1.0/LibStub/tests/test2.lua
+   A /trunk/libs/LibNameplate-1.0/LibStub/tests/test3.lua
+   A /trunk/libs/LibNameplate-1.0/LibStub/tests/test4.lua
+   A /trunk/libs/LibNameplate-1.0/lib.xml
+   M /trunk/libs/embeds.xml
+   M /trunk/locales/deDE.lua
+   M /trunk/locales/enUS.lua
+   M /trunk/locales/esES.lua
+   M /trunk/locales/frFR.lua
+   M /trunk/locales/koKR.lua
+   M /trunk/locales/ruRU.lua
+   M /trunk/locales/zhCN.lua
+   M /trunk/locales/zhTW.lua
+   A /trunk/media
+   A /trunk/media/FrizQuadrataTT_New.ttf
+   M /trunk/options.lua
+   A /trunk/texture
+   A /trunk/texture/border.tga
+
+initial update 1.17.2 for 5.4.8
+------------------------------------------------------------------------
+r225 | acapela | 2012-10-03 17:03:01 +0000 (Wed, 03 Oct 2012) | 1 line
+Changed paths:
+   M /trunk/PlateBuffs.toc
+
+fixed TOC interface typo.
+------------------------------------------------------------------------
