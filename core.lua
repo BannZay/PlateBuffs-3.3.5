@@ -610,14 +610,11 @@ do
 				LibNameplate.RegisterCallback(self, "LibNameplate_ThreatChange")
 			end
 			
-			print("PLATEBUFFS - Load LibNameplate-1.0")
 		elseif P.defaultLib == 2 then
 			LibNameplateRegistry.LNR_RegisterCallback(self,"LNR_ON_NEW_PLATE"); -- registering this event will enable the library else it'll remain idle
 			LibNameplateRegistry.LNR_RegisterCallback(self,"LNR_ON_RECYCLE_PLATE");
 			LibNameplateRegistry.LNR_RegisterCallback(self,"LNR_ON_GUID_FOUND");
 			LibNameplateRegistry.LNR_RegisterCallback(self,"LNR_ERROR_FATAL_INCOMPATIBILITY");		
-			
-			print("PLATEBUFFS - Load LibNameplateRegistry-1.0")
 		end
 		
 		--Update old options.
