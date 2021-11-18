@@ -1,0 +1,17 @@
+## Interface: 30300
+## X-Curse-Packaged-Version: r969
+## X-Curse-Project-Name: Ace3
+## X-Curse-Project-ID: ace3
+## X-Curse-Repository-ID: wow/ace3/mainline
+
+## Title: Lib: Ace3
+## Notes: AddOn development framework
+## Author: Ace3 Development Team
+## X-Website: http://www.wowace.com
+## X-Category: Library
+## X-License: Limited BSD
+
+LibStub\LibStub.lua
+Ace3.xml
+
+Ace3.lua

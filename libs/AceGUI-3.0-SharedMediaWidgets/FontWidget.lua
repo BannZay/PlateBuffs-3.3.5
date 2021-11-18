@@ -7,8 +7,8 @@ local Media = LibStub("LibSharedMedia-3.0")
 local AGSMW = LibStub("AceGUISharedMediaWidgets-1.0")
 
 do
-	local widgetType = "LSM30_Background"
-	local widgetVersion = 10
+	local widgetType = "LSM30_Font"
+	local widgetVersion = 9
 
 	local contentFrameCache = {}
 	local function ReturnSelf(self)
@@ -26,13 +26,6 @@ do
 		end
 	end
 
-	local function ContentOnEnter(this, button)
-		local self = this.obj
-		local text = this.text:GetText()
-		local background = self.list[text] ~= text and self.list[text] or Media:Fetch('background',text)
-		self.dropdown.bgTex:SetTexture(background)
-	end
-
 	local function GetContentLine()
 		local frame
 		if next(contentFrameCache) then
@@ -43,8 +36,6 @@ do
 				frame:SetHeight(18)
 				frame:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
 				frame:SetScript("OnClick", ContentOnClick)
-				frame:SetScript("OnEnter", ContentOnEnter)
-
 			local check = frame:CreateTexture("OVERLAY")
 				check:SetWidth(16)
 				check:SetHeight(16)
@@ -52,17 +43,12 @@ do
 				check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
 				check:Hide()
 			frame.check = check
-
 			local text = frame:CreateFontString(nil,"OVERLAY","GameFontWhite")
-				local font, size = text:GetFont()
-				text:SetFont(font,size,"OUTLINE")
-
 				text:SetPoint("LEFT", check, "RIGHT", 1, 0)
 				text:SetPoint("RIGHT", frame, "RIGHT", -2, 0)
 				text:SetJustifyH("LEFT")
 				text:SetText("Test Test Test Test Test Test Test")
 			frame.text = text
-
 			frame.ReturnSelf = ReturnSelf
 		end
 		frame:Show()
@@ -100,18 +86,14 @@ do
 	end
 
 	local function SetList(self, list) -- Set the list of values for the dropdown (key => value pairs)
-		self.list = list or Media:HashTable("background")
+		self.list = list or Media:HashTable("font")
 	end
-
 
 	local function SetText(self, text) -- Set the text displayed in the box.
 		self.frame.text:SetText(text or "")
-		local background = self.list[text] ~= text and self.list[text] or Media:Fetch('background',text)
-
-		self.frame.displayButton:SetBackdrop({bgFile = background,
-			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-			edgeSize = 16,
-			insets = { left = 4, right = 4, top = 4, bottom = 4 }})
+		local font = self.list[text] ~= text and self.list[text] or Media:Fetch('font',text)
+		local _, size, outline= self.frame.text:GetFont()
+		self.frame.text:SetFont(font,size,outline)
 	end
 
 	local function SetLabel(self, text) -- Set the text for the label.
@@ -132,10 +114,8 @@ do
 		self.disabled = disabled
 		if disabled then
 			self.frame:Disable()
-			self.frame.displayButton:SetBackdropColor(.2,.2,.2,1)
 		else
 			self.frame:Enable()
-			self.frame.displayButton:SetBackdropColor(1,1,1,1)
 		end
 	end
 
@@ -152,22 +132,21 @@ do
 		else
 			AceGUI:SetFocus(self)
 			self.dropdown = AGSMW:GetDropDownFrame()
-			local width = self.frame:GetWidth()
 			self.dropdown:SetPoint("TOPLEFT", self.frame, "BOTTOMLEFT")
-			self.dropdown:SetPoint("TOPRIGHT", self.frame, "BOTTOMRIGHT", width < 160 and (160 - width) or 0, 0)
 			for k, v in pairs(self.list) do
 				sortedlist[#sortedlist+1] = k
 			end
 			table.sort(sortedlist, textSort)
 			for i, k in ipairs(sortedlist) do
 				local f = GetContentLine()
+				local _, size, outline= f.text:GetFont()
+				local font = self.list[k] ~= k and self.list[k] or Media:Fetch('font',k)
+				f.text:SetFont(font,size,outline)
 				f.text:SetText(k)
-				--print(k)
 				if k == self.value then
 					f.check:Show()
 				end
 				f.obj = self
-				f.dropdown = self.dropdown
 				self.dropdown:AddFrame(f)
 			end
 			wipe(sortedlist)
@@ -196,7 +175,7 @@ do
 	end
 
 	local function Constructor()
-		local frame = AGSMW:GetBaseFrameWithWindow()
+		local frame = AGSMW:GetBaseFrame()
 		local self = {}
 
 		self.type = widgetType

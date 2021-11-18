@@ -7,8 +7,8 @@ local Media = LibStub("LibSharedMedia-3.0")
 local AGSMW = LibStub("AceGUISharedMediaWidgets-1.0")
 
 do
-	local widgetType = "LSM30_Border"
-	local widgetVersion = 10
+	local widgetType = "LSM30_Background"
+	local widgetVersion = 9
 
 	local contentFrameCache = {}
 	local function ReturnSelf(self)
@@ -29,11 +29,8 @@ do
 	local function ContentOnEnter(this, button)
 		local self = this.obj
 		local text = this.text:GetText()
-		local border = self.list[text] ~= text and self.list[text] or Media:Fetch('border',text)
-		this.dropdown:SetBackdrop({edgeFile = border,
-			bgFile=[[Interface\DialogFrame\UI-DialogBox-Background-Dark]],
-			tile = true, tileSize = 16, edgeSize = 16,
-			insets = { left = 4, right = 4, top = 4, bottom = 4 }})
+		local background = self.list[text] ~= text and self.list[text] or Media:Fetch('background',text)
+		self.dropdown.bgTex:SetTexture(background)
 	end
 
 	local function GetContentLine()
@@ -55,6 +52,10 @@ do
 				check:Hide()
 			frame.check = check
 			local text = frame:CreateFontString(nil,"OVERLAY","GameFontWhite")
+
+				local font, size = text:GetFont()
+				text:SetFont(font,size,"OUTLINE")
+
 				text:SetPoint("LEFT", check, "RIGHT", 1, 0)
 				text:SetPoint("RIGHT", frame, "RIGHT", -2, 0)
 				text:SetJustifyH("LEFT")
@@ -97,17 +98,17 @@ do
 	end
 
 	local function SetList(self, list) -- Set the list of values for the dropdown (key => value pairs)
-		self.list = list or Media:HashTable("border")
+		self.list = list or Media:HashTable("background")
 	end
 
 
 	local function SetText(self, text) -- Set the text displayed in the box.
 		self.frame.text:SetText(text or "")
-		local border = self.list[text] ~= text and self.list[text] or Media:Fetch('border',text)
+		local background = self.list[text] ~= text and self.list[text] or Media:Fetch('background',text)
 
-		self.frame.displayButton:SetBackdrop({edgeFile = border,
-			bgFile=[[Interface\DialogFrame\UI-DialogBox-Background-Dark]],
-			tile = true, tileSize = 16, edgeSize = 16,
+		self.frame.displayButton:SetBackdrop({bgFile = background,
+			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+			edgeSize = 16,
 			insets = { left = 4, right = 4, top = 4, bottom = 4 }})
 	end
 
@@ -129,8 +130,10 @@ do
 		self.disabled = disabled
 		if disabled then
 			self.frame:Disable()
+			self.frame.displayButton:SetBackdropColor(.2,.2,.2,1)
 		else
 			self.frame:Enable()
+			self.frame.displayButton:SetBackdropColor(1,1,1,1)
 		end
 	end
 
@@ -147,9 +150,7 @@ do
 		else
 			AceGUI:SetFocus(self)
 			self.dropdown = AGSMW:GetDropDownFrame()
-			local width = self.frame:GetWidth()
 			self.dropdown:SetPoint("TOPLEFT", self.frame, "BOTTOMLEFT")
-			self.dropdown:SetPoint("TOPRIGHT", self.frame, "BOTTOMRIGHT", width < 160 and (160 - width) or 0, 0)
 			for k, v in pairs(self.list) do
 				sortedlist[#sortedlist+1] = k
 			end

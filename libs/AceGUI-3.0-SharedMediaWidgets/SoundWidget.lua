@@ -8,7 +8,7 @@ local AGSMW = LibStub("AceGUISharedMediaWidgets-1.0")
 
 do
 	local widgetType = "LSM30_Sound"
-	local widgetVersion = 10
+	local widgetVersion = 9
 
 	local contentFrameCache = {}
 	local function ReturnSelf(self)
@@ -29,7 +29,7 @@ do
 	local function ContentSpeakerOnClick(this, button)
 		local self = this.frame.obj
 		local sound = this.frame.text:GetText()
-		PlaySoundFile(self.list[sound] ~= sound and self.list[sound] or Media:Fetch('sound',sound), "Master")
+		PlaySoundFile(self.list[sound] ~= sound and self.list[sound] or Media:Fetch('sound',sound))
 	end
 
 	local function GetContentLine()
@@ -157,9 +157,7 @@ do
 		else
 			AceGUI:SetFocus(self)
 			self.dropdown = AGSMW:GetDropDownFrame()
-			local width = self.frame:GetWidth()
 			self.dropdown:SetPoint("TOPLEFT", self.frame, "BOTTOMLEFT")
-			self.dropdown:SetPoint("TOPRIGHT", self.frame, "BOTTOMRIGHT", width < 160 and (160 - width) or 0, 0)
 			for k, v in pairs(self.list) do
 				sortedlist[#sortedlist+1] = k
 			end
@@ -201,7 +199,7 @@ do
 	local function WidgetPlaySound(this)
 		local self = this.obj
 		local sound = self.frame.text:GetText()
-		PlaySoundFile(self.list[sound] ~= sound and self.list[sound] or Media:Fetch('sound',sound), "Master")
+		PlaySoundFile(self.list[sound] ~= sound and self.list[sound] or Media:Fetch('sound',sound))
 	end
 
 	local function Constructor()
