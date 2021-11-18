@@ -14,7 +14,7 @@ Dependencies: LibStub, CallbackHandler-1.0
 		- hooking plates OnEnter requires the plates enable mouse. But doing that stops the mouseover ID being available. 
 ]]
 
-local MAJOR, MINOR = "LibNameplate-1.0", 16
+local MAJOR, MINOR = "LibNameplate-1.0", 21
 if not LibStub then error(MAJOR .. " requires LibStub.") return end
 
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
@@ -49,7 +49,7 @@ local UnitHealth = UnitHealth
 local UnitHealthMax = UnitHealthMax
 local UnitClass = UnitClass
 local UnitInRange = UnitInRange
-
+local table_remove = table.remove
 
 --Conts
 local scanDelay		= 1 -- Scan for new nameplates every 1 seconds. We hook OnShow so this doesn't need to be done rapidly.
@@ -78,7 +78,7 @@ lib.debugPrint = debugPrint
 
 lib.nameplates		= lib.nameplates or {}
 lib.GUIDs			= lib.GUIDs or {}
-lib.names			= lib.names or {}
+--~ lib.names			= lib.names or {}
 lib.onShowHooks = lib.onShowHooks or {}
 lib.onHideHooks = lib.onHideHooks or {}
 lib.onUpdateHooks = lib.onUpdateHooks or {}
@@ -88,20 +88,56 @@ lib.healthOnValueChangedHooks = lib.healthOnValueChangedHooks or {}
 lib.plateGUIDs = lib.plateGUIDs or {}
 lib.isOnScreen = lib.isOnScreen or {}
 lib.isOnUpdating = lib.isOnUpdating or {}
-
+lib.prevHealth = lib.prevHealth or {}
 
 --Region locations
-lib.name_region = lib.name_region or {}
-lib.level_region = lib.level_region or {}
-lib.boss_region = lib.boss_region or {}
-lib.elite_region = lib.elite_region or {}
-lib.threat_region = lib.threat_region or {}
-lib.hightlight_region = lib.hightlight_region or {}
-lib.raidicon_region = lib.raidicon_region or {}
+lib.name_region = lib.name_region or setmetatable({}, {__index = function(t,frame)
+	t[frame] = lib:GetNameRegion(frame)
+	return t[frame]
+	end
+})
+lib.level_region = lib.level_region or setmetatable({}, {__index = function(t,frame)
+	t[frame] = lib:GetLevelRegion(frame)
+	return t[frame]
+	end
+})
+lib.boss_region = lib.boss_region or setmetatable({}, {__index = function(t,frame)
+	t[frame] = lib:GetBossRegion(frame)
+	return t[frame]
+	end
+})
+lib.elite_region = lib.elite_region or setmetatable({}, {__index = function(t,frame)
+	t[frame] = lib:GetEliteRegion(frame)
+	return t[frame]
+	end
+})
+lib.threat_region = lib.threat_region or setmetatable({}, {__index = function(t,frame)
+	t[frame] = lib:GetThreatRegion(frame)
+	return t[frame]
+	end
+})
+lib.hightlight_region = lib.hightlight_region or setmetatable({}, {__index = function(t,frame)
+	t[frame] = lib:GetHightlightRegion(frame)
+	return t[frame]
+	end
+})
+lib.raidicon_region = lib.raidicon_region or setmetatable({}, {__index = function(t,frame)
+	t[frame] = lib:GetRaidIconRegion(frame)
+	return t[frame]
+	end
+})
 
 --bar locations
-lib.health_bar = lib.health_bar or {}
-lib.cast_bar = lib.cast_bar or {}
+lib.health_bar = lib.health_bar or setmetatable({}, {__index = function(t,frame)
+	t[frame] = lib:GetHealthBar(frame)
+	return t[frame]
+	end
+})
+lib.cast_bar = lib.cast_bar or setmetatable({}, {__index = function(t,frame)
+	t[frame] = lib:GetCastBar(frame)
+	return t[frame]
+	end
+})
 
 
 lib.combatStatus = lib.combatStatus or {}
@@ -132,16 +168,22 @@ for i, name in pairs(barNames) do
 	barIndex[name] = i
 end
 
-
-
-
-
 --[[
 	these always return nil
 	frame:IsClampedToScreen(), frame:IsIgnoringDepth(), frame:IsMovable(), frame:IsToplevel(), frame:GetDepth(), frame:GetEffectiveDepth(), 
 
 ]]
 local function IsNamePlateFrame(frame)
+	if frame.extended or frame.aloftData then
+		--Tidyplates = extended, Aloft = aloftData
+		--They sometimes remove & replace the children so this needs to be checked first.
+		return true
+	end
+
+	if frame.done then --caelNP
+		return true
+	end
+
 	if frame:GetName() then
 --~ 		debugPrint("IsNamePlateFrame","No name!")
 		return false
@@ -155,17 +197,7 @@ local function IsNamePlateFrame(frame)
 --~ 		debugPrint("IsNamePlateFrame","Not a frame!")
 		return false
 	end
-		
-	if frame.extended or frame.aloftData then
-		--Tidyplates = extended, Aloft = aloftData
-		--They sometimes remove & replace the children so this needs to be checked first.
-		return true
-	end
 
-	if frame.done then --caelNP
-		return true
-	end
-	
 	if frame:GetNumChildren() == 0 then
 --~ 		debugPrint("IsNamePlateFrame","No children?!!", frame:GetName(), frame.extended and frame.extended.bars)
 		return false
@@ -179,45 +211,33 @@ local function IsNamePlateFrame(frame)
 end
 
 
-
---[===[@debug@
-function LC_TEST()--		/run LC_TEST()
-	local c = {WorldFrame:GetChildren()}
-	local frame, cFrame
-	for i = 1, table_getn(c) do
-		frame = c[i]
-		if frame:IsShown() then
-			--frame.extended
-			debugPrint(IsNamePlateFrame(frame), "ID:"..tostring(frame:GetID()), "C:"..tostring(frame:GetNumChildren()), "R:"..tostring(frame:GetNumRegions()))
-			
-		end
+--~ local function ScanWorldFrameChildren(n, ...)
+--~     for i = 1, n do
+--~         local frame = select(i, ...)
+--~         if frame:IsShown() and IsNamePlateFrame(frame) then
+--~             if not lib.nameplates[frame] then
+--~ 				lib:NameplateFirstLoad(frame)
+--~             end
+--~         end    
+--~     end
+	
+local function ScanWorldFrameChildren(frame, ...)
+	if not frame then return end
+	if frame:IsShown() and not lib.nameplates[frame] and IsNamePlateFrame(frame) then
+		lib:NameplateFirstLoad(frame)
 	end
-end
---@end-debug@]===]
-
-local function ScanWorldFrameChildren(n, ...)
-    for i = 1, n do
-        local frame = select(i, ...)
-        if frame:IsShown() and IsNamePlateFrame(frame) then
-            if not lib.nameplates[frame] then
-				lib:NameplateFirstLoad(frame)
-                lib:SetupNameplate(frame)                    
-            end
-        end    
-    end
+	return ScanWorldFrameChildren(...) --Call it self with the rest of the frames.
 end
 
 
-local lastChildren = 0
+local prevChildren = 0
 local function FindNameplates()
     local curChildren = WorldFrame:GetNumChildren()
-    if curChildren ~= lastChildren then
-        lastChildren = curChildren
-        ScanWorldFrameChildren(curChildren, WorldFrame:GetChildren())
+    if curChildren ~= prevChildren then
+        prevChildren = curChildren
+		ScanWorldFrameChildren( WorldFrame:GetChildren() )
     end
 end
-
-
 
 ---------------------------
 -- Get region locations
@@ -233,7 +253,8 @@ function lib:GetNameRegion(frame)
 		return frame.oldname
 	end
 	
-	return select(regionIndex.nameText, frame:GetRegions())
+	local region = select(regionIndex.nameText, frame:GetRegions())
+	return region
 end
 
 function lib:GetLevelRegion(frame)
@@ -343,11 +364,11 @@ local function HideMouseoverRegion(frame)																		--
 -- If we move the camera angle while the mouse is over a plate, that plate won't hide the mouseover texture.	--
 -- So if we're mousing over someone's feet and a plate has the mouseover texture visible, 						--
 -- it fools our code into thinking we're mousing over that plate.												--
--- This can be recreated by placing the mouse over a nameplate then holding rightclick and moving the canera.	--
--- Our UpdateNameplateInfo will see that the texture is still visible but no mouseover ID is available. 		--
+-- This can be recreated by placing the mouse over a nameplate then holding rightclick and moving the camera.	--
+-- If our UpdateNameplateInfo sees the mouseover texture still visible when we have no mouseoverID, it'll call	--
+-- this function to hide the texture.																			--
 ------------------------------------------------------------------------------------------------------------------
-
-	local region = lib.hightlight_region[frame] or lib:GetHightlightRegion(frame)
+	local region = lib.hightlight_region[frame]
 	if region and region.Hide then
 		region:Hide()
 	end
@@ -366,12 +387,10 @@ local function RecycleNameplate(frame)
 	
 	local plateName = lib:GetName(frame)
 	
-	if plateName and lib.names[plateName] then
-		lib.names[plateName] = false
-	end
-	
-	
-	
+--~ 	if plateName and lib.names[plateName] then
+--~ 		lib.names[plateName] = false
+--~ 	end
+
 	lib.plateGUIDs[frame] = false
 	local fake = lib.fakePlate[frame]
 	if fake then
@@ -386,8 +405,6 @@ local function FoundPlateGUID(frame, GUID, unitID)
 	
 	lib.GUIDs[GUID] = frame
 	lib.callbacks:Fire("LibNameplate_FoundGUID", lib.fakePlate[frame] or frame, GUID, unitID)
-	
-	
 end
 
 local function GetMouseoverGUID(frame)
@@ -481,7 +498,7 @@ local function CheckUnitIDForMatchingHP(unitID, frameName, current, max)
 end
 
 function lib:NewNameplateCheckHP(frame)
-	local bar = self.health_bar[frame] or self:GetHealthBar(frame)
+	local bar = self.health_bar[frame]
 	if bar and bar.GetValue then --bar.GetMinMaxValues then
 		local _, max = bar:GetMinMaxValues()
 --~ 		return tonumber(max or 0)
@@ -528,7 +545,6 @@ function lib:NewNameplateCheckHP(frame)
 	end
 end
 
-lib.prevHealth = lib.prevHealth or {}
 
 function lib.OnNameplateShow(frame, ...)
 --~ 	local plateName = lib:GetName(frame)
@@ -557,13 +573,33 @@ local function ourOnHide(self, ...)
 end
 ]]
 
---[[
+--[[]]
+
+lib.callbacksRegistered = lib.callbacksRegistered or {}
+
 function lib.callbacks:OnUsed(target, eventname)
+	lib.callbacksRegistered[eventname] = lib.callbacksRegistered[eventname] or {}
+	table_insert(lib.callbacksRegistered[eventname], #lib.callbacksRegistered[eventname]+1, target)
+--~ 	debugPrint("OnUsed", target, eventname)
+	
+	lib.ModifyOnUpdate()
 end
 
 function lib.callbacks:OnUnused(target, eventname)
+--~ 	debugPrint("OnUnused", target, eventname)
+	
+	if lib.callbacksRegistered[eventname] then
+		for i=1, #lib.callbacksRegistered[eventname] do 
+			if lib.callbacksRegistered[eventname][i] == target then
+				table_remove(lib.callbacksRegistered[eventname], i)
+				break
+			end
+		end
+	end
+	
+	lib.ModifyOnUpdate()
 end
-]]
+
 
 local function CheckForFakePlate(frame)
 	if not lib.fakePlate[frame] and frame.extended then
@@ -584,9 +620,8 @@ local function CheckCombatStatus(frame)
 	end
 end
 
-local function CheckThreatStatus(frame, spam)
+local function CheckThreatStatus(frame)
 	local threatSit = lib:GetThreatSituation(frame)
-
 	if lib.threatStatus[frame] ~= threatSit then
 		lib.threatStatus[frame] = threatSit
 --~ 		debugPrint("CheckThreatStatus D", threatSit, "LibNameplate_ThreatChange")
@@ -620,7 +655,6 @@ function lib.OnNameplateUpdate(frame, elapsed, ...)
 	end
 end
 local function ourOnUpdate(...) return lib.OnNameplateUpdate(...) end
-
 
 
 --[[
@@ -684,27 +718,6 @@ end
 local function ourCastbarHide(...) return lib.OnCastbarHide(...) end
 ]]
 
-
-
-function lib:SaveFrameRegions(frame)
-	self.name_region[frame] = self:GetNameRegion(frame)
-	self.level_region[frame]  = self:GetLevelRegion(frame)
-	self.boss_region[frame]  = self:GetBossRegion(frame)
-	self.elite_region[frame]  = self:GetEliteRegion(frame)
-	self.threat_region[frame]  = self:GetThreatRegion(frame)
-	self.hightlight_region[frame]  = self:GetHightlightRegion(frame)
-	self.raidicon_region[frame]  = self:GetRaidIconRegion(frame)
-
-end
---~ lib:GetHealthBar(frame)
-
-
-function lib:SaveFrameBars(frame)
-	self.health_bar[frame] =  self:GetHealthBar(frame)
-	self.cast_bar[frame] =  self:GetCastBar(frame)
-
-end
-
 local testing = false
 
 function lib:HookNameplate(frame)
@@ -736,20 +749,20 @@ function lib:HookNameplate(frame)
 end
 
 function lib:NameplateFirstLoad(frame)
-	--Save region and bar locations.
-	lib:SaveFrameRegions(frame)
-	lib:SaveFrameBars(frame)
-	
-	--Hook handlers.
-	self:HookNameplate(frame)
-	
-	--Save frame's combat status as false.
-	if self.combatStatus[frame] == nil then
-		self.combatStatus[frame] = false --not in combat
-	end
-	
-	if self.threatStatus[frame] == nil then
-		self.threatStatus[frame] = "LOW"
+	if not lib.nameplates[frame] then
+		--Hook handlers.
+		self:HookNameplate(frame)
+		
+		--Save frame's combat status as false.
+		if self.combatStatus[frame] == nil then
+			self.combatStatus[frame] = false --not in combat
+		end
+		
+		if self.threatStatus[frame] == nil then
+			self.threatStatus[frame] = "LOW"
+		end
+		
+		lib:SetupNameplate(frame)
 	end
 end
 
@@ -758,7 +771,7 @@ function lib:SetupNameplate(frame)
 
 	local plateName = self:GetName(frame)
 	self.nameplates[frame] = plateName
-	self.names[plateName] = frame
+--~ 	self.names[plateName] = frame
 --~ 	local plateType = self:GetType(frame)
 --~ 	local plateCombat = self:IsInCombat(frame)
 --~ 	debugPrint("SetupNameplate", plateName, plateType, plateCombat)
@@ -801,70 +814,7 @@ local function CheckForTargetGUID()
 --~ 	debugPrint("Failed to find target GUID")
 end
 
-
-local checkHPMatch = 1 --every 1 seconds
-
---lib.checkForHPUnitMatch[plate]
-local function OnUpdate(frame, elapsed)
-	if frame.checkTarget then
-		frame.checkTarget = false
-		CheckForTargetGUID()
-	end
-
-	FindNameplates()
-
-	--code searches for broken OnShow/OnHide hooks.
-	--some nameplate addons will use SetScript instead of HookScript and breaks our hooks.
-	frame.lastUpdate = frame.lastUpdate + elapsed
-	if frame.lastUpdate >= scanDelay then
-		frame.lastUpdate = 0
-		for frame, value in pairs(lib.isOnScreen) do 
-			if (value == true and not frame:IsShown()) then --OnHide fail
-				debugPrint("OnHide fail", frame, value, frame:IsShown())
-				lib.onHideHooks[frame] = false
-				lib.isOnScreen[frame] = false
-				lib:HookNameplate(frame)
-				lib.OnNameplateHide(frame)
-				
-			elseif (value == false and frame:IsShown()) then --OnShow fail
-				debugPrint("OnShow fail", frame, value, frame:IsShown())
-				lib.onShowHooks[frame] = false
-				lib.isOnScreen[frame] = false
-				lib:HookNameplate(frame)
-				lib:SetupNameplate(frame, true)
-				
-			end
-		end
-		for frame, value in pairs(lib.isOnUpdating) do 
-			if value == false and frame:IsShown() then
-				debugPrint("OnUpdate fail?")
-				lib.onUpdateHooks[frame] = false
-				lib:HookNameplate(frame)
-			end
-		end
-	end
-	
-	--[[
-	--Check if HP has changed on frames which we don't know GUIDs for. If so, see if we can match that current/max HP to any group member's targets.
-	frame.lastHPCheck = frame.lastHPCheck + elapsed
-	if frame.lastHPCheck >= checkHPMatch then
-		frame.lastHPCheck = 0
-		local plateName
-		for plate in pairs(lib.checkForHPUnitMatch) do 
-			if plate:IsShown() then
-				plateName = lib:GetName(plate)
-				debugPrint("healthOnValueChanged",plate, "Checking HP change on "..tostring(plateName))
-				lib:NewNameplateCheckHP(plate)
-			else
-				lib.checkForHPUnitMatch[plate] = false
-			end
-		end
-	end
-	]]
-end
-
-
-local function OnEvent(frame, event, ...)
+local function MainOnEvent(frame, event, ...)
 	if event == "UPDATE_MOUSEOVER_UNIT" then
 		if GetMouseFocus():GetName() == "WorldFrame" then
 			local i = 0
@@ -888,10 +838,10 @@ local function OnEvent(frame, event, ...)
 		end
 		
 	elseif event == "PLAYER_TARGET_CHANGED" then
+		lib.targeted = nil
+		
 		if UnitExists("target") then
-			frame.checkTarget = true--Check for target nameplate on next OnUpdate. We can't do it now.
-		else
-			lib.targeted = nil
+			lib.checkTarget:Show() --Target's nameplate alpha isn't update until the next OnUpdate fires.
 		end
 		
 	elseif event == "UNIT_TARGET" then
@@ -968,19 +918,65 @@ local function OnEvent(frame, event, ...)
 	end
 end
 
-lib.frame = lib.frame or CreateFrame("Frame")
 
+
+lib.frame = lib.frame or CreateFrame("Frame")
 lib.frame.lastUpdate = 0
 lib.frame.lastHPCheck = 0
-lib.frame.checkTarget = false
-lib.frame:SetScript("OnUpdate", OnUpdate)
-lib.frame:SetScript("OnEvent", OnEvent)
+lib.frame:SetScript("OnEvent", MainOnEvent)
 lib.frame:RegisterEvent('UPDATE_MOUSEOVER_UNIT')
 lib.frame:RegisterEvent('PLAYER_TARGET_CHANGED')
 lib.frame:RegisterEvent('UNIT_TARGET')
 lib.frame:RegisterEvent('RAID_TARGET_UPDATE')
 lib.frame:RegisterEvent('PLAYER_ENTERING_WORLD')
+lib.frame:SetScript("OnUpdate", function(this, elapsed)
+	FindNameplates()
+end)
 
+--To find our target's nameplate, we need to wait for 1 OnUpdate to fire after PLAYER_TARGET_CHANGED.
+lib.checkTarget = lib.checkTarget or CreateFrame("Frame")
+lib.checkTarget:Hide()
+lib.checkTarget:SetScript("OnUpdate", function(this, elapsed) 
+	CheckForTargetGUID()
+	this:Hide()
+end)
+
+
+lib.fixHooks = lib.fixHooks or CreateFrame("Frame")
+lib.fixHooks.updateThrottle = 1 --fire once a second.
+lib.fixHooks.lastUpdate = 0
+lib.fixHooks:SetScript("OnUpdate", function(this, elapsed)
+	--code searches for broken OnShow/OnHide hooks.
+	--some nameplate addons will use SetScript instead of HookScript and breaks our hooks.
+	this.lastUpdate = this.lastUpdate - elapsed
+	if this.lastUpdate <= 0 then
+		this.lastUpdate = this.updateThrottle
+		for frame, value in pairs(lib.isOnScreen) do 
+			if (value == true and not frame:IsShown()) then --OnHide fail
+				debugPrint("OnHide fail", frame, value, frame:IsShown())
+				lib.onHideHooks[frame] = false
+				lib.isOnScreen[frame] = false
+				lib:HookNameplate(frame)
+				lib.OnNameplateHide(frame)
+				
+			elseif (value == false and frame:IsShown()) then --OnShow fail
+				debugPrint("OnShow fail", frame, value, frame:IsShown())
+				lib.onShowHooks[frame] = false
+				lib.isOnScreen[frame] = false
+				lib:HookNameplate(frame)
+				lib:SetupNameplate(frame, true)
+				
+			end
+		end
+		for frame, value in pairs(lib.isOnUpdating) do 
+			if value == false and frame:IsShown() then
+				debugPrint("OnUpdate fail?")
+				lib.onUpdateHooks[frame] = false
+				lib:HookNameplate(frame)
+			end
+		end
+	end
+end)
 
 
 --------------------- API ------------------
@@ -1057,34 +1053,67 @@ local function GetHealthBarColor(frame)
 		return frame.originalR, frame.originalG, frame.originalB
 	end
 	
-	local bar = lib.health_bar[frame] or lib:GetHealthBar(frame)
+	local bar = lib.health_bar[frame]
 	if bar and bar.GetStatusBarColor then
 		return bar:GetStatusBarColor()
 	end
 	return nil
 end
 
---------------------------------------------------------------
-local function RemoveHexColor(inputString)					--
--- Remove hex color code from string. 						--
--- Aloft uses hex codes to color name and level regions.	--
---------------------------------------------------------------
-	local find = inputString:find("|c")
-	if find then
-		inputString = inputString:sub(find+10)
+lib.noColorName = lib.noColorName or setmetatable({}, {__index = function(t,inputString)
+	if inputString  then
+		if inputString:find("|c") then
+			local input = inputString
+			local find = inputString:find("|c")
+			local inputString = inputString:sub(find+10)
+			inputString = inputString:gsub("|r", "")
+			t[input] = inputString
+			return inputString
+		end
+		t[inputString] = inputString
 	end
-	inputString = inputString:gsub("|r", "")
-	return inputString
-end
+	return inputString or "UNKNOWN"
+end})
+
+lib.noColorNum = lib.noColorNum or setmetatable({}, {__index = function(t,inputString)
+	if inputString then
+		if inputString:find("|c") then
+			local input = inputString
+			local find = inputString:find("|c")
+			local inputString = inputString:sub(find+10)
+			inputString = inputString:gsub("|r", "")
+			inputString = tonumber(inputString or 0)
+			t[input] = inputString
+			return inputString
+		end
+		t[inputString] = tonumber(inputString or 0)
+	end
+	return inputString or 0
+end})
+
+--~ --------------------------------------------------------------
+--~ local function RemoveHexColor(inputString)					--
+--~ -- Remove hex color code from string. 						--
+--~ -- Aloft uses hex codes to color name and level regions.	--
+--~ --------------------------------------------------------------
+--~ 	if inputString and inputString:find("|c") then
+--~ 		local find = inputString:find("|c")
+--~ 		inputString = inputString:sub(find+10)
+--~ 		inputString = inputString:gsub("|r", "")
+--~ 	end
+--~ 	return inputString
+--~ end
 
 --API 
 
 function lib:GetName(frame)
 	local frame = self.realPlate[frame] or frame
 
-	local nameRegion = self.name_region[frame] or self:GetNameRegion(frame)
+	local nameRegion = self.name_region[frame]
 	if nameRegion and nameRegion.GetText then
-		return RemoveHexColor( nameRegion:GetText() )
+--~ 		return RemoveHexColor( nameRegion:GetText() )
+		return self.noColorName[ nameRegion:GetText() ]
+		
 	end
 
 	return nil
@@ -1093,9 +1122,11 @@ end
 
 function lib:GetLevel(frame)
 	local frame = self.realPlate[frame] or frame
-	local region = self.level_region[frame] or self:GetLevelRegion(frame)
+	local region = self.level_region[frame]
 	if region and region.GetText then
-		return tonumber( RemoveHexColor( region:GetText() ) )
+--~ 		return tonumber( RemoveHexColor( region:GetText() ) )
+		return self.noColorNum[ region:GetText() ]
+		
 	end
 	return 0
 end
@@ -1145,7 +1176,7 @@ end
 function lib:IsBoss(frame)
 	local frame = self.realPlate[frame] or frame
 
-	local region = self.boss_region[frame] or self:GetBossRegion(frame)
+	local region = self.boss_region[frame]
 	if region and region.IsShown then
 		return region:IsShown() and true or false
 	end
@@ -1169,7 +1200,7 @@ end
 function lib:IsElite(frame)
 	local frame = self.realPlate[frame] or frame
 
-	local region = self.elite_region[frame] or self:GetEliteRegion(frame)
+	local region = self.elite_region[frame]
 	if region and region.IsShown then
 		return region:IsShown() and true or false
 	end
@@ -1183,7 +1214,7 @@ end
 function lib:GetThreatSituation(frame)
 	local frame = self.realPlate[frame] or frame
 
-	local region = self.threat_region[frame] or self:GetThreatRegion(frame)
+	local region = self.threat_region[frame] 
 	if region and region.GetVertexColor then
 		return threatByColor(region)
 	end
@@ -1199,7 +1230,7 @@ end
 function lib:GetHealthMax(frame)
 	local frame = self.realPlate[frame] or frame
 
-	local bar = self.health_bar[frame] or self:GetHealthBar(frame)
+	local bar = self.health_bar[frame]
 	if bar and bar.GetMinMaxValues then
 		local _, max = bar:GetMinMaxValues()
 		return tonumber(max or 0)
@@ -1210,7 +1241,7 @@ end
 function lib:GetHealth(frame)
 	local frame = self.realPlate[frame] or frame
 
-	local bar = self.health_bar[frame] or self:GetHealthBar(frame)
+	local bar = self.health_bar[frame]
 	if bar and bar.GetValue then
 		return bar:GetValue()
 	end
@@ -1220,7 +1251,7 @@ end
 function lib:GetRaidIcon(frame)
 	local frame = self.realPlate[frame] or frame
 
-	local region = self.raidicon_region[frame] or self:GetRaidIconRegion(frame)
+	local region = self.raidicon_region[frame] 
 	if region and region.IsShown and region:IsShown() and region.GetTexCoord then
 		local ULx,ULy = region:GetTexCoord() --,LLx,LLy,URx,URy,LRx,LRy
 		
@@ -1235,7 +1266,7 @@ end
 function lib:IsMouseover(frame)
 	local frame = self.realPlate[frame] or frame
 
-	local region = self.hightlight_region[frame] or self:GetHightlightRegion(frame)
+	local region = self.hightlight_region[frame] 
 	if region and region.IsShown then
 		return region:IsShown() and true or false
 	end
@@ -1247,7 +1278,7 @@ end
 function lib:IsCasting(frame)
 	local frame = self.realPlate[frame] or frame
 
-	local bar = self.cast_bar[frame] or self:GetCastBar(frame)
+	local bar = self.cast_bar[frame]
 	if bar and bar.IsShown then
 		return bar:IsShown() and true or false
 	end
@@ -1258,7 +1289,7 @@ end
 function lib:IsInCombat(frame)
 	local frame = self.realPlate[frame] or frame
 
-	local region = self.name_region[frame] or self:GetNameRegion(frame)
+	local region = self.name_region[frame] 
 	if region and region.GetTextColor then
 		return combatByColor( region:GetTextColor() ) and true or false
 	end
@@ -1269,7 +1300,7 @@ end
 function lib:IsMarked(frame)
 	local frame = self.realPlate[frame] or frame
 
-	local region = self.raidicon_region[frame] or self:GetRaidIconRegion(frame)
+	local region = self.raidicon_region[frame]
 	if region and region.IsShown then
 		return region:IsShown() and true or false
 	end
@@ -1297,9 +1328,27 @@ function lib:GetNameplateByGUID(GUID)
 end
 
 
-function lib:GetNameplateByName(name)
-	if self.names[name] and self.names[name]:IsShown() then
-		return self.fakePlate[self.names[name]] or self.names[name]
+function lib:GetNameplateByName(name, maxHp)
+--~ 	if self.names[name] and self.names[name]:IsShown() then
+--~ 		return self.fakePlate[self.names[name]] or self.names[name]
+--~ 	end
+	
+	local bar, barMax
+	for frame in pairs(self.nameplates) do 
+		if frame:IsShown() then
+			if name == lib:GetName(frame) then
+				if not maxHp then
+					return self.fakePlate[frame] or frame
+				end
+				bar = self.health_bar[frame]
+				if bar and bar.GetMinMaxValues then
+					_, barMax = bar:GetMinMaxValues()
+					if barMax == maxHp then
+						return self.fakePlate[frame] or frame
+					end
+				end
+			end
+		end
 	end
 end
 
@@ -1328,9 +1377,7 @@ function lib:GetNameplateByUnit(unitID)
 	end
 	
 	
-	if self.names[GUID] and self.names[GUID]:IsShown() then
-		return self.fakePlate[self.names[GUID]] or self.names[GUID]
-	end
+	return self:GetNameplateByName(name, maxHealth)
 end
 
 --Returns all known nameplates. Not just the one's visible.
@@ -1347,7 +1394,7 @@ function lib:GetNameplateByHealth(current, max)
 	local bar, barMax, barCurrent
 	for frame in pairs(self.nameplates) do 
 		if frame:IsShown() then
-			bar = self.health_bar[frame] or self:GetHealthBar(frame)
+			bar = self.health_bar[frame]
 
 			if bar and bar.GetMinMaxValues then
 				_, barMax = bar:GetMinMaxValues()
@@ -1373,14 +1420,82 @@ function lib:GetNameplateByHealth(current, max)
 	return nil
 end
 
---[===[@debug@
-function LC_TEST2()--		/run LC_TEST2()
-	local health = UnitHealth("target")
-	local maxHealth = UnitHealthMax("target")
+
+
+--[[
+	Testing changes to our OnUpdate hook function. 
+	I'm trying to change the OnUpdate function based on which callbacks are registered. Right now it only checks Combat and Threat changed callbacks.
+	Hopfully this is coded right because any errors won't say which line is acting up. 
+]]
+
+local loadstring = loadstring
+local setmetatable = setmetatable
+local setfenv = setfenv
+
+function lib.ModifyOnUpdate()
+	local code = [[
+		local frame, elapsed = ...
+		]]
+
+	code = code..[[
+		lib.isOnUpdating[frame] = true --to make sure our hooks don't break.
+		if frame.lnpCheckForTarget then --Check on the first OnUpdate after the frame's shown.
+			frame.lnpCheckForTarget = false
+			if not lib.plateGUIDs[frame] and frame:IsShown() and ((frame:GetAlpha() == 1) and UnitExists("target")) then
+				FoundPlateGUID(frame, UnitGUID("target"), "target")
+			end
+		end
 	
-	local frame = lib:GetNameplateByHealth(health, maxHealth)
-	if frame then
-		debugPrint("LC_TEST2","Found frame!", lib:GetClass(frame))
+		frame.lnpLastUpdate = (frame.lnpLastUpdate or 0) + elapsed
+		if frame.lnpLastUpdate > updateDelay then
+			UpdateNameplateInfo(frame)
+			CheckForFakePlate(frame)
+			]]
+
+		--Only check for combatchange if callback is registered.
+		if lib.callbacksRegistered["LibNameplate_CombatChange"]  and #lib.callbacksRegistered["LibNameplate_CombatChange"] > 0 then
+			code = code..[[
+			CheckCombatStatus(frame)
+			]]
+		end
+
+	--Only check if threat changed if callback is registred.
+	if lib.callbacksRegistered["LibNameplate_ThreatChange"]  and #lib.callbacksRegistered["LibNameplate_ThreatChange"] > 0 then
+		code = code..[[
+			CheckThreatStatus(frame)
+			elseif frame.updateCountdown > 0 then
+			--Threat doesn't get updated until the first OnUpdate. So OnShow sometimes sees the threat of the previous nameplate owner.
+			--So I wait unit the 2nd OnUpdate to check threat status.
+			frame.updateCountdown = frame.updateCountdown - 1
+			if frame.updateCountdown == 0 then
+				CheckThreatStatus(frame)
+			end
+		]]
 	end
+	code = code..[[
+		end 
+	]]--Close our if statement.
+
+	
+	local update = loadstring(code, "OnUpdateString")
+
+	local smallenv = {--Create our environment so the script can access these functions/values.
+		lib = lib,
+		FoundPlateGUID = FoundPlateGUID,
+		UpdateNameplateInfo = UpdateNameplateInfo,
+		CheckForFakePlate = CheckForFakePlate,
+		CheckCombatStatus = CheckCombatStatus,
+		CheckThreatStatus = CheckThreatStatus,
+		updateDelay = updateDelay,
+	};
+
+--~ 	setmetatable(smallenv, {__index = _G}) --Make sure it can access global functions.
+	setmetatable(smallenv, {__index = function(t,i) --Our script is trying to access something not in our environment.
+		t[i] = _G[i]	--Create a upvalue in our environment. I hope this will give faster lookup times then making '__Index = _G' would.
+		return t[i]
+	end}) 
+
+	setfenv(update, smallenv);--Set our update function to use our environment.
+	
+	lib.OnNameplateUpdate = update
 end
---@end-debug@]===]
